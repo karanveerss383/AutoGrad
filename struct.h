@@ -6,8 +6,8 @@ typedef struct Value Value;
 struct Value {
   float data;
   float grad;
-  Value** left;
-  Value** right;
+  Value* left;
+  Value* right;
   void (*backward) (Value*);
   int visited;
   char op;
@@ -19,7 +19,7 @@ typedef struct {
 } Neurons;
 
 typedef struct {
-  Neurons* n;
+  Neurons* neurons;
   size_t fan_in;
   size_t fan_out;
 } Layer;
