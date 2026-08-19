@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "weight_init.h"
 #include "activations.h"
+#include "backward.h"
 
 Value* add(Value* a, Value* b){
 
@@ -15,7 +16,7 @@ Value* add(Value* a, Value* b){
   result->op = '+';
   result->left = a;
   result->right = b;
-  result->backward = NULL;
+  result->backward = add_backward;
   result->visited = 0;
 
   return result;
@@ -30,14 +31,14 @@ Value* mul(Value* a, Value* b){
   result->op = '*';
   result->left = a;
   result->right = b;
-  result->backward = NULL;
+  result->backward = mul_backward;
   result->visited = 0;
 
   return result;
 
 }
 
-Value** matmul(Layer* L, Value* input){
+Value** matmul(Layer* L, Value** input){
 
   Value** output = malloc(sizeof(Value*) * L->fan_out);
 
@@ -50,14 +51,14 @@ Value** matmul(Layer* L, Value* input){
     zero->left = NULL;
     zero->right = NULL;
     zero->op = ' ';
-    zero->backward = NULL;
+    zero->backward = noop_backward;
     zero->visited = 0;
 
     output[i] = zero;
 
     for (int j = 0; j < L->fan_in; j++){
 
-      Value* multprod = mul(&L->neurons[i].weights[j], &input[j]);
+      Value* multprod = mul(&L->neurons[i].weights[j], input[j]);
 
       output[i] = add(output[i], multprod);
 
@@ -70,7 +71,7 @@ Value** matmul(Layer* L, Value* input){
 
 }
 
-Value*** batch_matmul(Layer* L, Value*input, size_t batch_size){
+Value*** batch_matmul(Layer* L, Value**input, size_t batch_size){
 
   Value*** batch_output = malloc(sizeof(Value**) * batch_size);
 

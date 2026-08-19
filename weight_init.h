@@ -30,7 +30,7 @@ Value* init_weights(size_t type, size_t dist, int fan_in, int fan_out){
       weights[i * fan_in + j].left = NULL;
       weights[i * fan_in + j].right = NULL;
       weights[i * fan_in + j].op = ' ';
-      weights[i * fan_in + j].backward = NULL;
+      weights[i * fan_in + j].backward = noop_backward;
       weights[i * fan_in + j].visited = 0;
     } 
   }

@@ -39,18 +39,18 @@ Value* softmax(Value** input, int catagories){
   return result;
 }
 
-Value* relu(Value** input, int size){
+Value** relu(Value** input, int size){
 
-  Value* result = malloc(sizeof(Value) * size);
+  Value** result = malloc(sizeof(Value*) * size);
 
   for (int i = 0; i < size; i++){
-
-    result[i].data = (input[i]->data < 0) ? 0 : input[i]->data;
-    result[i].op = 'r';
-    result[i].left = input[i];
-    result[i].right = NULL;
-    result[i].backward = NULL;
-    result[i].visited = 0;
+    result[i] = malloc(sizeof(Value));
+    result[i]->data = (input[i]->data < 0) ? 0 : input[i]->data;
+    result[i]->op = 'r';
+    result[i]->left = input[i];
+    result[i]->right = NULL;
+    result[i]->backward = relu_backward;
+    result[i]->visited = 0;
   
   }
 

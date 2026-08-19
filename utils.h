@@ -7,7 +7,7 @@
 
 void createLayer(Layer* L1, int weights_dist, int weights_type, int in_features, int out_features);
 
-Value* init_Value(float* input, int input_size);
+Value** init_Value(float* input, int input_size);
 
 void createLayer(Layer* L1, int weights_dist, int weights_type, int in_features, int out_features){
   
@@ -22,23 +22,29 @@ void createLayer(Layer* L1, int weights_dist, int weights_type, int in_features,
     L1->neurons[i].weights = L1->neurons[0].weights + (L1->fan_in * i);
 
     L1->neurons[i].bias.data = 0.0001; 
+    L1->neurons[i].bias.grad = 0.0f; 
+    L1->neurons[i].bias.left = NULL; 
+    L1->neurons[i].bias.right = NULL; 
+    L1->neurons[i].bias.op = 'b'; 
+    L1->neurons[i].bias.backward = noop_backward; 
+    L1->neurons[i].bias.visited = 0; 
   }
 
 }
 
-Value* init_Value(float* input, int input_size){
+Value** init_Value(float* input, int input_size){
 
-  Value* result = malloc(input_size* sizeof(Value));
+  Value** result = malloc(input_size* sizeof(Value*));
 
   for (int i = 0; i < input_size; i++){
-
-    result[i].data = input[i];
-    result[i].grad = 0.0f;
-    result[i].left = NULL;
-    result[i].right = NULL;
-    result[i].op = ' ';
-    result[i].backward = NULL;
-    result[i].visited = 0;
+    result[i] = malloc(sizeof(Value));
+    result[i]->data = input[i];
+    result[i]->grad = 0.0f;
+    result[i]->left = NULL;
+    result[i]->right = NULL;
+    result[i]->op = ' ';
+    result[i]->backward = noop_backward;
+    result[i]->visited = 0;
 
   }
   return result;
