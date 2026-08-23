@@ -7,6 +7,7 @@
 #include "activations.h"
 #include "weight_init.h"
 
+typedef struct Tensor Tensor;
 
 typedef struct{
   int dims;
@@ -19,16 +20,16 @@ typedef struct{
   Tensor* right;
   void (*backward)(Tensor*);
   char op;
-}TensorGraph
+}TensorGraph;
 
-typedef struct{
+struct Tensor{
   TensorMetadata meta;
   float* data;
   float* grad;
   TensorGraph graph;
-}Tensor;
+};
 
-Tensor* create_Tensor(int dims, int* shape){
+Tensor* create_Tensor(int dims, int* shape, float* data){
   
   Tensor* cur_tensor = malloc(sizeof(Tensor)*1);
   
@@ -42,7 +43,17 @@ Tensor* create_Tensor(int dims, int* shape){
   cur_tensor->data = calloc(cur_tensor->meta.size, sizeof(float));
   cur_tensor->grad = calloc(cur_tensor->meta.size, sizeof(float));
 
+  if (data != NULL) memcpy(cur_tensor->data, data, sizeof(float) * cur_tensor->meta.size);
+
   return cur_tensor;
+}
+
+Tensor* transpose(Tensor* t){
+    Tensor* new_t = create_Tensor(2, (int[]){t->meta.shape[1], t->meta.shape[0]});
+    for(int i = 0; i < t->meta.shape[1]; i++)
+        for(int j = 0; j < t->meta.shape[0]; j++)
+            new_t->data[i * t->meta.shape[0] + j] = t->data[j * t->meta.shape[1] + i];
+    return new_t;
 }
 
 void add_tensor_backward(Tensor* self){
@@ -52,6 +63,16 @@ void add_tensor_backward(Tensor* self){
         a->grad[i] += self->grad[i];
         b->grad[i] += self->grad[i];
     }
+}
+
+void matmul_tensor_backward(Tensor* self){
+  Tensor* a = self->graph.left;
+  Tensor* b = self->graph.right;
+  
+  Tensor* a_t = transpose(a);
+  Tensor* b_t = transpose(b);
+  // FIX THIS ASAP
+  Tensor* d_a = matmul_tensor(b_t, self->grad)
 }
 
 Tensor* add_tensor(Tensor* a, Tensor*  b){
@@ -71,7 +92,7 @@ Tensor* add_tensor(Tensor* a, Tensor*  b){
     }
   }
 
-  Tensor* new_t = create_Tensor(a->meta.dims, a->meta.shape);
+  Tensor* new_t = create_Tensor(a->meta.dims, a->meta.shape, NULL);
 
   for (int i = 0; i < new_t->meta.size; i++) {
     new_t->data[i] = a->data[i] + b->data[i];
@@ -85,20 +106,61 @@ Tensor* add_tensor(Tensor* a, Tensor*  b){
   return new_t;
 }
 
-Tensor* mul_tensor(Tensor* a, Tensor* b){
+Tensor* matmul_tensor(Tensor* a, Tensor* b){
 
+  if (a->meta.dims != b->meta.dims) {
+    fprintf(stderr, "Dimensions count doesnt match\n");
+    return NULL;
+  }
+
+  if (a->meta.dims != 3 && a->meta.dims != 2){
+    fprintf(stderr, "Not Supported Dimension Set yet\n");
+    return NULL;
+  }
+
+  if (a->meta.shape[1] != b->meta.shape[0]) {
+    fprintf(stderr, "Cannot Multiple the Matrics A(Columns) != B(Rows)\n");
+    return NULL;
+  }
+
+  int* shape = malloc(sizeof(int) * a->meta.dims); 
+  memcpy(shape, a->meta.shape, sizeof(int)*a->meta.dims);
+  shape[1] = b->meta.shape[1];
+  
+  Tensor* new_t = create_Tensor(a->meta.dims, shape, NULL);
+
+  for (int i = 0; i < a->meta.shape[0]; i++){
+    for (int j = 0; j < b->meta.shape[1]; j++){
+      for (int k = 0; k < b->meta.shape[0]; k++){
+        new_t->data[(i * b->meta.shape[1]) + j] += a->data[(i * a->meta.shape[1]) + k] * b->data[ (k * b->meta.shape[1]) + j ];
+       }
+    }
+  }
+  new_t->graph.left = a;
+  new_t->graph.right = b;
+  new_t->graph.op = '*';
+  new_t->graph.backward = NULL;
+
+  return new_t;
 }
 
 
 int main(){
   
-  int a[2] =  {6,6};
-  Tensor* t = create_Tensor(2, a);
+  int a[2] =  {2,3};
+  int b[2] = {3,2};
+  float data1[6] = {1,2,3,4,5,6};
+  float data2[6] = {2,4,6,8,10,12};
 
-  for (int i =0 ;i < t->meta.size; i++){
-    printf("%f\n", t->data[i]);
+  Tensor* t1 = create_Tensor(2, a, data1);
+  Tensor* t2 = create_Tensor(2, b, data2);
+  
+  Tensor* result = matmul_tensor(t1, t2);
+
+  for (int i = 0; i < result->meta.size; i++){
+    printf("%f,  ", result->data[i]);
+    if((i+1) % result->meta.shape[1] == 0) printf("\nNext Row\n");
   }
-  printf("%d", t->meta.size);
 
   return 0;
 }
