@@ -65,15 +65,41 @@ void add_tensor_backward(Tensor* self){
     }
 }
 
+Tensor* tensor_float_matmul(Tensor* t, float* f, int dims, int* shape){
+  
+  Tensor* result = create_Tensor(dims, shape);
+
+  for (int i = 0; i < t->meta.shape[0]; i++){
+    for(int j = 0; j < shape[1]; j++){
+      for (int k = 0; k < t->meta.shape[1]; k++){
+        result->data[i * shape[1] + j] += t->data[i * t->meta.shape[1] + k] * f[k * shape[1] + j];
+      }
+    }
+  }
+  return result;
+}
+
 void matmul_tensor_backward(Tensor* self){
   Tensor* a = self->graph.left;
   Tensor* b = self->graph.right;
   
   Tensor* a_t = transpose(a);
   Tensor* b_t = transpose(b);
-  // FIX THIS ASAP
-  Tensor* d_a = matmul_tensor(b_t, self->grad)
+  
+  Tensor* d_a = tensor_float_matmul(b_t, self->grad, b->meta.dims, a->meta.shape);
+  Tensor* d_b = tensor_float_matmul(a_t, self->grad, a->meta.dims, b->meta.shape);
+  for (int i = 0; i < a->meta.size; i++){
+    a->grad[i] += d_a->data[i];
+  }
+  
+  for (int i = 0; i < b->meta.size; i++){
+    b->grad[i] += d_b->data[i];
+  }
+  free(a_t);
+  free(b_t);
 }
+
+
 
 Tensor* add_tensor(Tensor* a, Tensor*  b){
   
@@ -138,8 +164,8 @@ Tensor* matmul_tensor(Tensor* a, Tensor* b){
   }
   new_t->graph.left = a;
   new_t->graph.right = b;
-  new_t->graph.op = '*';
-  new_t->graph.backward = NULL;
+  new_t->graph.op = '@';
+  new_t->graph.backward = matmul_tensor_backward;
 
   return new_t;
 }
