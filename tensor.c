@@ -49,6 +49,28 @@ Tensor* create_Tensor(int dims, int* shape, float* data){
   return cur_tensor;
 }
 
+Tensor* init_weights(size_t type, size_t dist, int fan_in, int fan_out){
+  
+  int scale = type * 2;
+  double var = (double)scale / (double)(fan_in + fan_out);
+  double std_dev = sqrt(var);
+  
+  float* weights = malloc(sizeof(float) * fan_out * fan_in);
+
+  for (int i = 0; i < fan_out; i++){
+  
+    for (int j = 0; j < fan_in; j++){
+    
+      weights[i * fan_in + j] = ((float)rand() / RAND_MAX) * (dist * std_dev) - ((dist - 1) * std_dev);
+    } 
+  }
+
+  Tensor* return_tensor = create_Tensor(2, (int[]){fan_out, fan_in}, weights);
+  
+  free(weights);
+
+  return return_tensor;
+}
 Tensor* ones_tensor(int dims, int* shape){
   
   Tensor* cur_tensor = create_Tensor(dims, shape, NULL);
@@ -120,6 +142,21 @@ void matmul_tensor_backward(Tensor* self){
   
   for (int i = 0; i < b->meta.size; i++){
     b->grad[i] += d_b->data[i];
+  }
+}
+
+void relu_tensor_backward(Tensor* self){
+
+  for (int i = 0; i < self->meta.size; i++) left->grad[i] += (float)(self->data[i] != 0) * self->grad[i];
+
+}
+
+void softmax_cross_tensor_backward(Tensor* softmax_out, Tensor* one_hot){
+  
+  for(int i = 0; i < softmax_out->meta.size; i++){
+      Tensor* input = softmax_out->graph.left;
+      input->grad[i] += softmax_out->data[i] - one_hot->data[i];
+      tensor_backward(input);
   }
 }
 
@@ -217,6 +254,52 @@ Tensor* matmul_tensor(Tensor* a, Tensor* b){
   return new_t;
 }
 
+Tensor* relu_tensor(Tensor* cur_tensor){
+  
+  new_t = create_Tensor(input->meta.dims, input->meta.shape, NULL);
+
+  for (int i = 0; i < size; i++){
+    new_t->data[i] = (cur_tensor->data[i] < 0) ? 0 : cur_tensor->data[i];
+  }
+
+  new_t->graph.left = a;
+  new_t->graph.right = NULL;
+  new_t->graph.op = 'r';
+  new_t->graph.backward = relu_tensor_backward;
+
+  return new_t;
+}
+
+Tensor* softmax_tensor(Tensor* cur_tensor){
+
+  new_t = create_Tensor(cur_tensor->meta.dims, cur_tensor->meta.shape, NULL);
+
+  double exp_sum = 0;
+  float max = cur_tensor->data[0];
+
+  for (int i = 1; i < cur_tensor->meta.size; i++){
+
+    if (cur_tensor->data[i] > max){
+      max = cur_tensor->data[i];
+    }
+  }
+
+  for (int i = 0; i < cur_tensor->meta.size; i++) exp_sum += expf(cur_tensor->data[i] - max);
+
+  for (int i = 0; i < cur_tensor->meta.size; i++){
+
+    new_t->data[i] = (float)(expf(cur_tensor->data[i] - max) / exp_sum);
+  
+  }
+
+  new_t->graph.left = a;
+  new_t->graph.right = NULL;
+  new_t->graph.op = 's';
+  new_t->graph.backward = softmax_tensor_backward;
+  
+  return new_t;
+}
+
 int main(){
   
   int a[2] =  {2,3};
@@ -224,10 +307,24 @@ int main(){
   float data1[6] = {1,2,3,4,5,6};
   float data2[6] = {2,4,6,8,10,12};
   
-  Tensor* t1 = create_Tensor(2, a, data1);
+  Tensor* t1 = init_weights(1, 1, 3, 2);
   Tensor* t2 = create_Tensor(2, b, data2);
 
   Tensor* result = matmul_tensor(t1, t2);
+  
+  printf("T1 :\n");
+  
+  for (int i = 0; i < t1->meta.size; i++){
+    printf("%f,  ", t1->data[i]);
+    if((i+1) % t1->meta.shape[1] == 0) printf("\n");
+  }
+  
+  printf("T2: \n");
+
+  for (int i = 0; i < t2->meta.size; i++){
+    printf("%f,  ", t2->data[i]);
+    if((i+1) % t2->meta.shape[1] == 0) printf("\n");
+  }
 
   for (int i = 0; i < result->meta.size; i++){
     printf("%f,  ", result->data[i]);

@@ -15,26 +15,23 @@
 
 Tensor* init_weights(size_t type, size_t dist, int fan_in, int fan_out){
   
-  Tensor* weights = malloc(sizeof(Tensor) * fan_in * fan_out);
- 
   int scale = type * 2;
   double var = (double)scale / (double)(fan_in + fan_out);
   double std_dev = sqrt(var);
   
+  float* weights;
+
   for (int i = 0; i < fan_out; i++){
   
     for (int j = 0; j < fan_in; j++){
     
-      weights->data[i * fan_in + j] = ((float)rand() / RAND_MAX) * (dist * std_dev) - ((dist - 1) * std_dev);
-      weights->grad[i * fan_in + j] = 0.0f;
-      weights[i * fan_in + j].left = NULL;
-      weights[i * fan_in + j].right = NULL;
-      weights[i * fan_in + j].op = ' ';
-      weights[i * fan_in + j].backward = noop_backward;
-      weights[i * fan_in + j].visited = 0;
+      weights[i * fan_in + j] = ((float)rand() / RAND_MAX) * (dist * std_dev) - ((dist - 1) * std_dev);
     } 
   }
-  return weights;
+
+  Tensor* return_tensor = create_tensor(2, (int[]){fan_out, fan_in}, weights);
+
+  return return_tensor;
 }
 
 #endif
