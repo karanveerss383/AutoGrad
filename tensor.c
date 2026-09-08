@@ -49,6 +49,25 @@ Tensor* create_Tensor(int dims, int* shape, float* data){
   return cur_tensor;
 }
 
+Tensor* load_data(){
+
+}
+
+Tensor* load_image_ubyte(char *file_name){
+
+  FILE *fd = fopen(file_name, "rb");
+
+  char header[16];
+  fread(header, sizeof(char), 16, fd);
+
+  int magic_num = (header[0] << 24) | (header[1] << 16) | (header[2] << 8) | (header[3]);
+  int img_num = (header[4] << 24) | (header[5] << 16) | (header[6] << 8) | (header[7]);
+  int row_num = (header[8] << 24) | (header[9] << 16) | (header[10] << 8) | (header[11]);
+  int col_num = (header[12] << 24) | (header[13] << 16) | (header[14] << 8) | (header[15]);
+
+  Tensor *loaded_tensor = create_Tensor(3, int[]{img_num, row_num, col_num}, (float*)(header+16))
+}
+
 Tensor* init_weights(size_t type, size_t dist, int fan_in, int fan_out){
   
   int scale = type * 2;
